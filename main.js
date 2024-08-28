@@ -3,17 +3,44 @@ import './style.css';
 import gsap from "gsap";
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
 //Scene
 const scene = new THREE.Scene();
 
 //Create a sphere
-const geometry = new THREE.SphereGeometry(3, 64, 64);
-const material = new THREE.MeshStandardMaterial({
-  color: "#00FF83",
-  roughness: 0.35,
-});
-const mesh = new THREE.Mesh(geometry, material); //Combines the geometry and the material to create a mesh.
-scene.add(mesh); //Adds the sphere to the scene.
+// const geometry = new THREE.SphereGeometry(3, 64, 64);
+// const material = new THREE.MeshStandardMaterial({
+//   color: "#00FF83",
+//   roughness: 0.35,
+// });
+// const mesh = new THREE.Mesh(geometry, material); //Combines the geometry and the material to create a mesh.
+// scene.add(mesh); //Adds the sphere to the scene.
+
+//Keep the 3D object on a global variable.
+let earthObject;
+
+// Loader for the low poly earth model.
+const loader = new GLTFLoader();
+loader.load('models/earth_cartoon/scene.gltf',
+  function (gltf) {
+    // If the file is loaded, add it to the scene.
+    earthObject = gltf.scene;
+    scene.add(earthObject);
+
+    // Start the GSAP animation
+    startAnimation();
+  },
+  function (xhr) {
+    // While it's loading, log the progress.
+    console.log((xhr.loaded / xhr.total * 100) + '% loaded.');
+  },
+  undefined,
+  function (error) {
+    // If there's an error, log it.
+    console.error(error);
+  }
+);
 
 //Sizes
 const sizes = {
@@ -23,17 +50,17 @@ const sizes = {
 
 //Light
 const light = new THREE.PointLight(0xffffff, 1, 100);
-light.intensity = 100;
+light.intensity = 500;
 light.position.set(0, 10, 10); //xyz positions for the light.
 scene.add(light);
 
-// const ambientLight = new THREE.AmbientLight(0xffffff, 1, 100);
-// ambientLight.intensity = 0.01;
-// scene.add(ambientLight);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1, 100);
+ambientLight.intensity = 0.01;
+scene.add(ambientLight);
 
 //Camera
 const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100);
-camera.position.z = 20;
+camera.position.z = 10;
 scene.add(camera);
 
 //Renderer
@@ -73,8 +100,12 @@ const loop = () => {
 };
 loop();
 
-//Animation timeline with gsap
-const timeline = gsap.timeline({ defaults: { duration:1 }});
-timeline.fromTo(mesh.scale, { z: 0, x: 0, y: 0 }, { z: 1, x: 1, y: 1 });
-timeline.fromTo("nav", { y: "-100%" }, { y: "0%" });
-timeline.fromTo(".title", { opacity: 0 }, { opacity: 1 });
+// Function for the GSAP animations
+function startAnimation() {
+  //Animation timeline with gsap
+  const timeline = gsap.timeline({ defaults: { duration:1 }});
+  // timeline.fromTo(mesh.scale, { z: 0, x: 0, y: 0 }, { z: 1, x: 1, y: 1 });
+  timeline.fromTo(earthObject.scale, { z: 0, x: 0, y: 0 }, { z: 1, x: 1, y: 1 });
+  timeline.fromTo("nav", { y: "-100%" }, { y: "0%" });
+  timeline.fromTo(".title", { opacity: 0 }, { opacity: 1 });
+};
