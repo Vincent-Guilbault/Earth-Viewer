@@ -1,111 +1,77 @@
-import * as THREE from 'three'; 
+import * as THREE from 'three';
 import './style.css';
-import gsap from "gsap";
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { setupScene, addLights } from './sceneSetup';
+import { createStarField, animateStars } from './starField';
+import { loadEarthModel, earthObject } from './modelLoader';
+import gsap from "gsap";
 
-//Scene
-const scene = new THREE.Scene();
-
-//Create a sphere
-// const geometry = new THREE.SphereGeometry(3, 64, 64);
-// const material = new THREE.MeshStandardMaterial({
-//   color: "#00FF83",
-//   roughness: 0.35,
-// });
-// const mesh = new THREE.Mesh(geometry, material); //Combines the geometry and the material to create a mesh.
-// scene.add(mesh); //Adds the sphere to the scene.
-
-//Keep the 3D object on a global variable.
-let earthObject;
-
-// Loader for the low poly earth model.
-const loader = new GLTFLoader();
-loader.load('models/earth_cartoon/scene.gltf',
-  function (gltf) {
-    // If the file is loaded, add it to the scene.
-    earthObject = gltf.scene;
-    scene.add(earthObject);
-
-    // Start the GSAP animation
-    startAnimation();
-  },
-  function (xhr) {
-    // While it's loading, log the progress.
-    console.log((xhr.loaded / xhr.total * 100) + '% loaded.');
-  },
-  undefined,
-  function (error) {
-    // If there's an error, log it.
-    console.error(error);
-  }
-);
-
-//Sizes
-const sizes = {
-  width: window.innerWidth,
-  height: window.innerHeight,
-};
-
-//Light
-const light = new THREE.PointLight(0xffffff, 1, 100);
-light.intensity = 500;
-light.position.set(0, 10, 10); //xyz positions for the light.
-scene.add(light);
-
-const ambientLight = new THREE.AmbientLight(0xffffff, 1, 100);
-ambientLight.intensity = 0.01;
-scene.add(ambientLight);
-
-//Camera
+// Scene, Camera, Renderer Setup
+const scene = setupScene();
+const sizes = { width: window.innerWidth, height: window.innerHeight };
 const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100);
 camera.position.z = 10;
 scene.add(camera);
 
-//Renderer
 const canvas = document.querySelector('.webgl');
 const renderer = new THREE.WebGLRenderer({ canvas });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(2);
-renderer.render(scene, camera);
 
-//Controls
+// Controls
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.enablePan = false;
 controls.enableZoom = false;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 3;
+controls.autoRotateSpeed = 0.5;
 
-//Resize
-window.addEventListener('resize', () => {
-  //Update the sizes
-  sizes.width = window.innerWidth;
-  sizes.height = window.innerHeight;
+// Lights
+addLights(scene);
 
-  //Update the camera
-  camera.aspect = sizes.width / sizes.height;
-  camera.updateProjectionMatrix()
+// Star Field
+createStarField(scene);
 
-  //Update the renderer
-  renderer.setSize(sizes.width, sizes.height);
-  // renderer.render(scene, camera);
+// Load Earth Model and Clouds
+let cloudsObject;
+loadEarthModel(scene, () => {
+  const timeline = gsap.timeline({ defaults: { duration: 1 } });
+  // Example animation for Earth
+  timeline.fromTo(earthObject.scale, { z: 0, x: 0, y: 0 }, { z: 1, x: 1, y: 1 });
+  timeline.fromTo(cloudsObject.scale, { z: 0, x: 0, y: 0 }, { z: 1, x: 1, y: 1 });
+  timeline.fromTo("nav", { y: "-100%" }, { y: "0%" });
+  timeline.fromTo(".title", { opacity: 0 }, { opacity: 1 });
 });
 
+const cloudLoader = new GLTFLoader();
+cloudLoader.load('models/LowPolyEarth_Final_Clouds.glb', function (gltf) {
+  cloudsObject = gltf.scene;
+  scene.add(cloudsObject);
+  cloudsObject.scale.set(1.01, 1.01, 1.01); // Scale slightly larger than the Earth
+}, undefined, function (error) {
+  console.error(error);
+});
+
+// Resize Event
+window.addEventListener('resize', () => {
+  sizes.width = window.innerWidth;
+  sizes.height = window.innerHeight;
+  camera.aspect = sizes.width / sizes.height;
+  camera.updateProjectionMatrix();
+  renderer.setSize(sizes.width, sizes.height);
+});
+
+// Main Animation Loop
 const loop = () => {
   controls.update();
+  animateStars(); // Star animation
+  
+  if (cloudsObject) {
+    cloudsObject.rotation.y += 0.001; // Rotate the clouds slowly
+  }
+
   renderer.render(scene, camera);
   window.requestAnimationFrame(loop);
 };
 loop();
-
-// Function for the GSAP animations
-function startAnimation() {
-  //Animation timeline with gsap
-  const timeline = gsap.timeline({ defaults: { duration:1 }});
-  // timeline.fromTo(mesh.scale, { z: 0, x: 0, y: 0 }, { z: 1, x: 1, y: 1 });
-  timeline.fromTo(earthObject.scale, { z: 0, x: 0, y: 0 }, { z: 1, x: 1, y: 1 });
-  timeline.fromTo("nav", { y: "-100%" }, { y: "0%" });
-  timeline.fromTo(".title", { opacity: 0 }, { opacity: 1 });
-};
